@@ -1,6 +1,31 @@
 import re
 import argparse
 
+class WordChunkReader:
+    def __init__(self, filename, chunk_size=4096):
+        self.filename = filename
+        self.chunk_size = chunk_size
+        self.file = open(filename, 'r', encoding="utf")
+    
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        chunk = self.file.read(self.chunk_size)
+        if not chunk:
+            self.file.close()
+            raise StopIteration
+        
+        if chunk[-1] != ' ':
+            last_space_index = chunk.rfind(' ')
+            while last_space_index != len(chunk) - 1:
+                next_char = self.file.read(1)
+                if not next_char:
+                    return chunk
+                chunk += next_char
+                last_space_index = chunk.rfind(' ')
+        return chunk
+
 class CorpusCleaner:
     def __init__(self, input_file_path):
         self.input_file_path = input_file_path
@@ -55,13 +80,10 @@ class WordTokenizer(CorpusCleaner):
 
     def run(self):
         self.clear_output_files()
-        with open(self.input_file_path, encoding="utf") as f:
-            while True:
-                chunk = f.read(4096)
-                cleaned_chunk = self.clean(chunk)
-                tokens = self.tokenize(cleaned_chunk)
-                if not chunk:
-                    break
+        word_chunk_reader = WordChunkReader(self.input_file_path)
+        for word_chunk in word_chunk_reader:
+            cleaned_chunk = self.clean(word_chunk)
+            tokens = self.tokenize(cleaned_chunk)
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(description="Word tokenizer for the Tamil language.")
